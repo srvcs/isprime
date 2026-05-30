@@ -1,0 +1,123 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "srvcs-isprime",
+    "description": "",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [],
+        "summary": "`GET /` — service identity (srvcs service standard).",
+        "operationId": "index",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Info"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [],
+        "summary": "`POST /` — is `value` prime?",
+        "description": "This service does no arithmetic of its own. It runs a trial-division loop,\ndelegating each \"is `n` divisible by `d`\" question to `srvcs-isdivisibleby`\nover HTTP. If `n < 2` it is not prime and we answer immediately without any\ndependency calls. Otherwise we test divisors `d` in `2..n`: the first divisor\nthat divides `n` proves `n` composite and stops the loop. If none divides,\n`n` is prime.\n\nIf the dependency is unreachable mid-loop, isprime reports itself degraded\nrather than guessing.",
+        "operationId": "evaluate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrimeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "value is rejected by the dependency (forwarded)"
+          },
+          "500": {
+            "description": "value is not an integer"
+          },
+          "503": {
+            "description": "a dependency is unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EvalRequest": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "object"
+          }
+        }
+      },
+      "Info": {
+        "type": "object",
+        "required": [
+          "service",
+          "concern",
+          "depends_on"
+        ],
+        "properties": {
+          "concern": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      },
+      "PrimeResponse": {
+        "type": "object",
+        "required": [
+          "value",
+          "result"
+        ],
+        "properties": {
+          "result": {
+            "type": "boolean",
+            "description": "Whether `value` is prime."
+          },
+          "value": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}
