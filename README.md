@@ -1,57 +1,65 @@
 # srvcs-isprime
 
-The primality test of the srvcs.cloud distributed standard library.
+## Name
 
-Its single concern: **is the number prime?** It does no arithmetic of its own.
-It runs a trial-division loop and delegates each "is `n` divisible by `d`?"
-question to [`srvcs-isdivisibleby`](https://github.com/srvcs/isdivisibleby) over
-HTTP.
+| Field | Value |
+| --- | --- |
+| Service | `srvcs-isprime` |
+| Slug | `isprime` |
+| Repository | `srvcs/isprime` |
+| Package | `srvcs-isprime` |
+| Kind | `orchestrator` |
 
-Given `n`:
+## Function
 
-- if `n < 2`, the answer is `false` immediately (no dependency calls);
-- otherwise, for each divisor `d` in `2..n`, ask `srvcs-isdivisibleby` whether
-  `n` is divisible by `d`. The first divisor that divides `n` proves `n`
-  composite and stops the loop (`false`).
-- if no divisor divides `n`, it is prime (`true`).
+number theory: primality test
+
+## Dependencies
+
+| Dependency | Repository |
+| --- | --- |
+| `srvcs-isdivisibleby` | [srvcs/isdivisibleby](https://github.com/srvcs/isdivisibleby) |
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Service identity, concern, and dependency list |
-| `POST` | `/` | Is `value` prime? |
-| `GET` | `/healthz` `/readyz` `/metrics` `/openapi.json` | srvcs service standard surface |
+| `GET` | `/` | Service identity |
+| `POST` | `/` | Evaluate the service function |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/openapi.json` | OpenAPI document |
 
-```sh
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"value": 7}'
-# {"value":7,"result":true}
-```
+## Inputs
 
-Responses:
+| Name | Type | Required |
+| --- | --- | --- |
+| `value` | `json` | yes |
 
-- `200 {"value": n, "result": true | false}` — evaluated.
-- `422` — invalid input, forwarded from the dependency.
-- `500` — `value` is not an integer.
-- `503` — the dependency is unavailable.
+## Outputs
 
-## Dependencies
-
-- [`srvcs-isdivisibleby`](https://github.com/srvcs/isdivisibleby)
-
-A single request fans out across the dependency graph once per candidate
-divisor: `isprime → isdivisibleby` (up to `n - 2` times).
+| Name | Type |
+| --- | --- |
+| `value` | `json` |
+| `result` | `boolean` |
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SRVCS_BIND_ADDR` | `0.0.0.0:8080` | Bind address |
-| `SRVCS_ISDIVISIBLEBY_URL` | `http://127.0.0.1:8084` | Base URL of `srvcs-isdivisibleby` |
 | `SRVCS_ENV` | `development` | Environment label for logs |
 | `RUST_LOG` | `info,tower_http=info` | Tracing filter |
+| `SRVCS_ISDIVISIBLEBY_URL` | `` | Base URL for srvcs-isdivisibleby |
 
-## Local checks
+## Error Behavior
+
+- `422` means the request could not be evaluated for the documented input shape.
+- `503` means a required dependency was unavailable or returned an unexpected response.
+- Dependency validation errors are forwarded when this service delegates validation.
+
+## Local Checks
 
 ```sh
 cargo fmt --check
@@ -59,9 +67,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-Orchestration tests stand up a mock `srvcs-isdivisibleby` that genuinely
-computes `a % b == 0`, so the trial-division loop is exercised end to end. See
-[`srvcs/platform`](https://github.com/srvcs/platform) for the shared standard.
+See the [srvcs service standard](https://github.com/srvcs/platform/blob/main/STANDARD.md) for the full operational contract.
 
-> Note: the `cargoHash` in `flake.nix` is inherited from the template and must be
-> refreshed with a `nix build` before the Nix gates pass.
+## Metadata
+
+Machine-readable service metadata lives in `srvcs.yaml`. Keep it aligned with this README when the service contract changes.
